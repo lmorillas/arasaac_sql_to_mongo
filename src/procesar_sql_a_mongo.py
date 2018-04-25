@@ -5,9 +5,6 @@ import re
 import json
 import models
 import logging
-from mongoengine import DoesNotExist
-
-import logging
 
 logger = logging.getLogger('Arasaac DATA')
 logger.setLevel(logging.DEBUG)

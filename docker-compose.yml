@@ -5,11 +5,11 @@ services:
 
   db:
     image: mysql
-    #restart: always
+    restart: always
     #command: mysqld --sql_mode=""
     environment:
       MYSQL_ROOT_PASSWORD: example
-      MYSQL_DATABASE: saac
+      MYSQL_DATABASE: arasaac
 
     volumes:  # Mount relative path source folder on host to absolute path destination folder on docker container
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d

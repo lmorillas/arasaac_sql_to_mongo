@@ -1,51 +1,63 @@
 # coding: utf-8
 
 '''
-Models for mongo docs.
-A collection for translation
-
-Structure:
-*ids* are for integrity with legated system
-
-{
-    "_id" : ObjectId("5ab2356b111f154c17629ebf"),
-    "author" : {
-        "id_author" : 3,
-        "first_name" : "Grupo Autonómico Elaboracion Simbolos"
-    },
-    "image" : "4.jpg",
-    "labels" : [ 
-        {
-            "id_palabra" : 1825,
-            "palabra" : "chupete",
-            "definicion" : "m. Objeto con una parte de goma o materia similar en forma de pezón que se da a los niños para que chupen.",
-            "id_colaborador" : 1,
-            "ultima_modificacion" : ISODate("2006-08-15T19:01:20.000Z"),
-            "estado" : 1
-        }
-    ],
-    "tags" : [ 
-        "chupete", 
-        "plástico", 
-        "silicona", 
-        "caucho", 
-        "tetina", 
-        "chupar", 
-        "bebé", 
-        "niño", 
-        "niña", 
-        "azul", 
-        "boca"
-    ],
-    "created" : ISODate("2006-07-16T18:03:22.000Z"),
-    "modificated" : ISODate("2009-04-02T10:41:54.000Z"),
-    "id_image" : 4
-}
+[  
+  {
+      "_id" : ObjectId("5aabb680d5a3febb7f3487fc"),
+      "idPictogram" : 1234,
+      "keywords" : [ 
+          {
+	      "idKeyword": 1825
+              "keyword" : "comida",
+              "locution" : 34567,
+              "meaning" : "Acto de alimentarse a mediodía",
+              "lse" : 17589,
+              "type" : "noun",
+              "downloads" : 0,
+              "sinonyms" : [ 
+                  "manjar", 
+                  "alimento"
+              ]
+          }, 
+          {
+	      "idKeyword": 1826 	
+              "keyword" : "cena",
+              "locution" : 23657,
+              "meaning" : "Acto de alimentarse por la noche",
+              "lse" : 17629,
+              "type" : "noun",
+              "downloads" : 0
+          }
+      ],
+      "status" : "publish",
+      "created": {
+            "$date": "2015-03-23T09:08:31Z"
+        }, 
+      "lastUpdate": {
+            "$date": "2015-03-23T09:08:31Z"
+        }, 
+      "license" : "MIT",
+      "downloads" : 0,
+      "authors" : [ ----------------------------------------> Referencia a colección users
+          {
+              "name" : "Pepito",
+              "email" : "prueba@prueba.com",
+              "url" : "http://www.marca.es",
+              "company" : "DGA"
+          }
+      ],
+      "tags" : [ 
+          "alimentación", 
+          "plato"
+      ],
+      "legacyTags": [legacyTags]
+  },
+]
 
 '''
 
-from mongoengine import *
-connect('arasaac_legated')
+from pymongo import MongoClient
+client = MongoClient()
 
 class Word(EmbeddedDocument):
     id_palabra = IntField()
