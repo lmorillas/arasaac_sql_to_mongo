@@ -280,7 +280,7 @@ class Imagenes(object):
         self.inserta_imagenes()
 
 
-def genera_colecciones_palabras():
+def genera_colecciones_palabras(dbsql="arasaacv2", dbmongo="arasaac"):
     '''Genera las colecciones de palabras/pictogramas
     Crea colección auxiliar de palabra
     Genera colección de pictos específica por idioma:
@@ -291,11 +291,11 @@ def genera_colecciones_palabras():
     '''
     # MYSQL connection
     # CONFIGURACION
-    DBSQL = 'arasaacv2'
-    DBMONGO = 'arasaacv20'
+    DBSQL = dbsql
+    DBMONGO = dbmongo
 
     client = MongoClient()
-    db_mongo = client.DBMONGO
+    db_mongo = client[DBMONGO]
 
     cnx  = MySQLdb.connect(host='127.0.0.1', port=3306, user = 'root', 
                 passwd = 'example',db= DBSQL)
@@ -318,13 +318,15 @@ if __name__ == '__main__':
     DBSQL = 'arasaacv2'
     DBMONGO = 'arasaacv3'
 
+    '''
     client = MongoClient()
     db_mongo = client[DBMONGO]
 
     cnx  = MySQLdb.connect(host='127.0.0.1', port=3306, user = 'root', 
                 passwd = 'example',db= DBSQL)
     cursor = cnx.cursor()
-
-    genera_colecciones_palabras()
+    '''
+    # Descomentar para ejecutar programa
+    # genera_colecciones_palabras(DBSQL, DBMONGO)
 
     
