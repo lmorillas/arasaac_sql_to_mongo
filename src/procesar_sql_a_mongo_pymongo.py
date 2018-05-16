@@ -122,12 +122,6 @@ class Imagenes(object):
         self.mongo = con_mongo
         self.lang = lang
 
-    def inserta_locuciones(self):
-        '''
-        Locuciones sólo en español?
-        '''
-        pass
-
     def inserta_lse(self):
         sql = '''select id_imagen
             from imagenes_12'''
@@ -189,7 +183,22 @@ class Imagenes(object):
 
         # elimina colección aux de palabras
         self.mongo.drop_collection(coleccion_pal)
-        
+
+    def inserta_locuciones(self, palabras):
+        traducciones = json.load(open('idiomas.json'))
+        carpeta = ''
+        for t in traducciones:
+            if t.get('lang') == self.lang:
+                carpeta = t.get('table')
+                break
+        if carpeta == 'palabras':
+            carpeta = '0'
+        folder = os.path.join(os.getenv('FOLDER_LOCUTIONS'), carpeta)
+        locuciones_ids = [int(f.split('.')[0]) for f in os.listdir(folder)]
+        for p in palabras:
+            if p.get('idKeyword') in locuciones_ids:
+                p['idLocution']="{}.mp3".format(p.get('idKeyword'))
+
     def listado_palabras(self):
         '''
         Devuelve listado de palabras preparadas para insertar en mongo
@@ -243,6 +252,7 @@ class Imagenes(object):
         cursor.execute(sql_pal)
 
         listapals = cur_a_dict(cursor)
+
         logger.info ('TOTAL: %s palabras', len(listapals))
         
         for pal in listapals:
@@ -260,7 +270,9 @@ class Imagenes(object):
                                                     encoding)
                 else:
                     pal['keyword'] = decode(pal['keyword'], encoding)
-                
+
+        self.inserta_locuciones(listapals)
+
         return listapals
 
     @timed
@@ -277,6 +289,7 @@ class Imagenes(object):
     def procesar(self):
         self.inserta_palabras()
         self.inserta_imagenes()
+
 
 
 def genera_colecciones_palabras():
@@ -316,6 +329,7 @@ def genera_colecciones_palabras():
         im.inserta_palabras()
         logger.info('Procesando imagenes --> %s', l)
         im.inserta_imagenes() 
+        
         
 
 
