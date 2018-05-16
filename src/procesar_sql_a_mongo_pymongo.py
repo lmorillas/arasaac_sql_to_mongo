@@ -146,6 +146,7 @@ class Imagenes(object):
         cursor = self.con_sql.cursor()
 
         cursor.execute(sql_images)
+        
         singulares = json.load(open('singulares.json'))
         data = cur_a_dict(cursor, include_only = singulares)
         return data
@@ -334,11 +335,14 @@ def genera_colecciones_palabras():
 
 
 if __name__ == '__main__':
-    ##### CONFIGURACION
- 
-    # Logger
     logger = create_logger()
 
     load_dotenv('.env')
+
+    # crear json con singulares (svgs)
+    # comentar para usar fichero del repo
+    svgs = os.getenv('FOLDER_SVGS')
+    singulares = [int(f.split('.')[0]) for f in os.listdir(svgs)]
+    json.dump(singulares, open('singulares.json', 'w'))
 
     genera_colecciones_palabras()
