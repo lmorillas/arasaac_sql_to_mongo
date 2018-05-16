@@ -4,7 +4,8 @@ Build mongo collections for araaac images &amp; translations
 * python2
 * docker-compose para mongo y mysql (legado)
 * configuración de idiomas en `idiomas.json`
-* configurar bases de datos en src/procesar_sql_a_mongo_pymongo.py
+* configuración de entorno en src/.env
+
 
 ```bash
 git clone https://github.com/lmorillas/arasaac_sql_to_mongo.git
