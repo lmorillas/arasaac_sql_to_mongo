@@ -10,21 +10,10 @@ import datetime
 from utils import create_logger
 from functools import wraps
 import time
+import os
+from dotenv import load_dotenv
 
 
-##### CONFIGURACION
-DBSQL = 'arasaacv2'
-DBMONGO = 'arasaacv2'
-
-# MONGO
-client = MongoClient()
-db_mongo = client.DBMONGO
-
-# MYSQL connection
-cnx  = MySQLdb.connect(host='127.0.0.1', port=3306, user = 'root', 
-            passwd = 'example', db= DBSQL)
-
-logger = create_logger()
 
 
 # útiles
@@ -39,11 +28,17 @@ def timed(func):
         return result
     return wrapper
 
-def cur_a_dict(cur):
+def cur_a_dict(cur, include_only = []):
     '''
     devuelve lista de diccionarios
+    costoso si restricción de imágenes (no plurales)
     '''
-    return [dict((cur.description[i][0], value) \
+    if include_only:
+        return [dict((cur.description[i][0], value) 
+                    for i, value in enumerate(row)) for row in cur.fetchall()
+                    if row[0] in include_only]
+    else:
+        return [dict((cur.description[i][0], value) 
                for i, value in enumerate(row)) for row in cur.fetchall()]
 
 def limpia(s):
@@ -126,8 +121,7 @@ class Imagenes(object):
         self.con_sql = con_sql
         self.mongo = con_mongo
         self.lang = lang
-        
-        
+
     def inserta_locuciones(self):
         '''
         Locuciones sólo en español?
@@ -138,33 +132,39 @@ class Imagenes(object):
         sql = '''select id_imagen
             from imagenes_12'''
 
-    @timed
-    def inserta_imagenes(self):
-        '''
-        Extract Mysql info: image & author
-        Usa infor de auxiliar de palabras word_
-        '''
+
+    def listado_imagenes(self):
         sql_images =  '''SELECT id_imagen as idPictogram,
             fecha_creacion as created, ultima_modificacion as lastUpdate,
-            licencia as license, id_autor as authors,
+            id_licencia as license, id_autor as authors,
             estado as status 
-            FROM imagenes_10, licencias
-            WHERE imagenes_10.id_licencia = licencias.id_licencia'''
-            
-        sql_images_autor =  '''SELECT imagen as image, id_imagen as id_image,
-            fecha_creacion as created, ultima_modificacion as modificated,
-            autores.id_autor as id_author, autor as first_name, email_autor as email
-            FROM autores, imagenes
-            WHERE imagenes.id_autor = autores.id_autor'''
+            FROM imagenes_10
+            '''
+        sql_images_es =  '''SELECT id_imagen as idPictogram,
+            fecha_creacion as created, ultima_modificacion as lastUpdate,
+            id_licencia as license, id_autor as authors, 
+            estado as status, tags_imagen as legacyTags
+            FROM imagenes_10
+            '''
+        if self.lang == 'es':
+            sql_images = sql_images_es
 
         cursor = self.con_sql.cursor()
 
         cursor.execute(sql_images)
-        data = cur_a_dict(cursor)
+        singulares = json.load(open('singulares.json'))
+        data = cur_a_dict(cursor, include_only = singulares)
+        return data
 
-        col_authors = self.mongo.authors
+    @timed
+    def inserta_imagenes(self):
+        
+        data = self.listado_imagenes()
 
-        # genera una co# imagenes.tags_imagen as tags  PENDIENTE TAGS      lección diferente por idioma
+        col_authors = self. mongo.authors
+
+        # genera una colección de imagenes diferente por idioma
+        
         coleccion = 'araimage_{}'.format(self.lang)
         colimages = self.mongo[coleccion]
         
@@ -172,16 +172,18 @@ class Imagenes(object):
         word_col = self.mongo[coleccion_pal]
 
         for im in data:
-            if im['status'] == 1:
-                im['status'] = 'publish'
             author = im['authors']  # one
             _author =  col_authors.find_one({'idAuthor': author})
             if _author:
                 authorid = _author.get('_id')
                 im['authors'] = [authorid]
 
-            im['keywords'] = list(word_col.find({'idPictogram': im['idPictogram']}))
-            # eliminar _id de cada keyword?
+            im['keywords'] = list(word_col.find({'idPictogram': im['idPictogram']},
+                        projection={'_id': 0, 'idPictogram':0} ))
+                         
+            tags = im.get('legacyTags')
+            if tags:
+                im['legacyTags'] = separa_campos(im['legacyTags'])
 
         colimages.insert_many(data)
 
@@ -212,24 +214,21 @@ class Imagenes(object):
         sql_pal = '''select imagenes.id_imagen as idPictogram, 
                 {tablapal}.id_palabra as idKeyword, traduccion as keyword,
                 definicion_traduccion as meaning,
-                tipo_palabra_en as type
-                from {tablapal}, imagenes, palabra_imagen, tipos_palabra, palabras
+                id_tipo_palabra as type
+                from {tablapal}, imagenes, palabra_imagen, palabras
                 where imagenes.id_imagen = palabra_imagen.id_imagen and
                 {tablapal}.id_palabra = palabra_imagen.id_palabra and
-                palabras.id_tipo_palabra = tipos_palabra.id_tipo_palabra and
                 palabras.id_palabra = palabra_imagen.id_palabra
 
                 '''.format(tablapal=tablapal)
         
         sql_pal_es = '''select imagenes.id_imagen as idPictogram, 
                 palabras.id_palabra as idKeyword, palabra as keyword,
-                definicion as meaning,
-                tipo_palabra_{} as type
-                from palabras, imagenes, palabra_imagen, tipos_palabra
+                definicion as meaning, id_tipo_palabra as type
+                from palabras, imagenes, palabra_imagen
                 where imagenes.id_imagen = palabra_imagen.id_imagen and
-                palabras.id_palabra = palabra_imagen.id_palabra and
-                palabras.id_tipo_palabra = tipos_palabra.id_tipo_palabra
-                '''.format(lang)
+                palabras.id_palabra = palabra_imagen.id_palabra
+                ''' 
         # imagenes.tags_imagen as tags  PENDIENTE TAGS      
 
         if lang == 'es':
@@ -280,7 +279,7 @@ class Imagenes(object):
         self.inserta_imagenes()
 
 
-def genera_colecciones_palabras(dbsql="arasaacv2", dbmongo="arasaac"):
+def genera_colecciones_palabras():
     '''Genera las colecciones de palabras/pictogramas
     Crea colección auxiliar de palabra
     Genera colección de pictos específica por idioma:
@@ -289,16 +288,22 @@ def genera_colecciones_palabras(dbsql="arasaacv2", dbmongo="arasaac"):
 
     Usa idiomas.json como configuración
     '''
-    # MYSQL connection
-    # CONFIGURACION
-    DBSQL = dbsql
-    DBMONGO = dbmongo
+    
+    # DATABASE CONNECTIONS
+    load_dotenv()
 
-    client = MongoClient()
-    db_mongo = client[DBMONGO]
+    MYSQL_DATABASE = os.getenv('MYSQL_DATABASE')
+    MONGO_DATABASE = os.getenv('MONGO_DATABASE')
+    MYSQL_USER = os.getenv('MYSQL_USER')
+    MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
+    HOST_MONGO = os.getenv('HOST_MONGO')
+    HOST_MYSQL = os.getenv('HOST_MYSQL')
 
-    cnx  = MySQLdb.connect(host='127.0.0.1', port=3306, user = 'root', 
-                passwd = 'example',db= DBSQL)
+    client = MongoClient(host=HOST_MONGO, port=27017)
+    db_mongo = getattr(client, MONGO_DATABASE)
+
+    cnx  = MySQLdb.connect(host=HOST_MYSQL, port=3306, user = MYSQL_USER, 
+                passwd = MYSQL_PASSWORD, db= MYSQL_DATABASE)
 
     a = Autores(cnx, db_mongo)
     a.procesar()
@@ -311,22 +316,15 @@ def genera_colecciones_palabras(dbsql="arasaacv2", dbmongo="arasaac"):
         im.inserta_palabras()
         logger.info('Procesando imagenes --> %s', l)
         im.inserta_imagenes() 
+        
+
 
 if __name__ == '__main__':
-    # MYSQL connection
-    # CONFIGURACION
-    DBSQL = 'arasaacv2'
-    DBMONGO = 'arasaacv3'
+    ##### CONFIGURACION
+ 
+    # Logger
+    logger = create_logger()
 
-    '''
-    client = MongoClient()
-    db_mongo = client[DBMONGO]
+    load_dotenv('.env')
 
-    cnx  = MySQLdb.connect(host='127.0.0.1', port=3306, user = 'root', 
-                passwd = 'example',db= DBSQL)
-    cursor = cnx.cursor()
-    '''
-    # Descomentar para ejecutar programa
-    # genera_colecciones_palabras(DBSQL, DBMONGO)
-
-    
+    genera_colecciones_palabras()
