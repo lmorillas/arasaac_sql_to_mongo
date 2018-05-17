@@ -16,3 +16,16 @@ pip install -r requirements.txt
 cd src 
 python procesar_sql_a_mongo_pymongo.py
 ```
+
+## Ejemplo .env
+
+``` bash
+MYSQL_DATABASE = 'arasaac'
+MONGO_DATABASE = 'arasaac'
+MYSQL_USER = 'root'
+MYSQL_PASSWORD = 'example'
+HOST_MONGO = 'host_name'
+HOST_MYSQL = 'host_name'
+FOLDER_LOCUTIONS = '<ruta a carpeta raíz de locuciones>'  
+FOLDER_SVGS = '<ruta a carpeta de svgs>'
+```

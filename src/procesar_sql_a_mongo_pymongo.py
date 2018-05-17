@@ -147,8 +147,16 @@ class Imagenes(object):
 
         cursor.execute(sql_images)
         
-        singulares = json.load(open('singulares.json'))
+        svgs = os.getenv('FOLDER_SVGS')
+        try:
+            singulares = [int(f.split('.')[0]) for f in os.listdir(svgs)]
+            # descomentar para usar estático
+            #singulares = json.load(open('singulares.json'))
+        except OSError:
+            logger.error('No existe carpeta de SVGs %s', svgs)
+            singulares = []
         data = cur_a_dict(cursor, include_only = singulares)
+        
         return data
 
     @timed
@@ -195,10 +203,14 @@ class Imagenes(object):
         if carpeta == 'palabras':
             carpeta = '0'
         folder = os.path.join(os.getenv('FOLDER_LOCUTIONS'), carpeta)
-        locuciones_ids = [int(f.split('.')[0]) for f in os.listdir(folder)]
-        for p in palabras:
-            if p.get('idKeyword') in locuciones_ids:
-                p['idLocution']="{}.mp3".format(p.get('idKeyword'))
+        try:
+            locuciones_ids = [int(f.split('.')[0]) for f in os.listdir(folder)]
+            for p in palabras:
+                if p.get('idKeyword') in locuciones_ids:
+                    p['idLocution']="{}.mp3".format(p.get('idKeyword'))
+        except OSError:
+            logger.error('No existe carpeta de locuciones en %s', folder) 
+
 
     def listado_palabras(self):
         '''
@@ -264,6 +276,9 @@ class Imagenes(object):
                                                     encoding)
                 else:
                     pal['meaning'] = decode(pal['meaning'], encoding)
+            else:
+                del(pal['meaning'])
+                
             if pal.get('keyword'):
                 if charset:
                     pal['keyword'] = doble_decode(pal['keyword'], 
@@ -339,10 +354,9 @@ if __name__ == '__main__':
 
     load_dotenv('.env')
 
-    # crear json con singulares (svgs)
-    # comentar para usar fichero del repo
-    svgs = os.getenv('FOLDER_SVGS')
-    singulares = [int(f.split('.')[0]) for f in os.listdir(svgs)]
-    json.dump(singulares, open('singulares.json', 'w'))
+    # crear json con singulares (svgs) Descomentar para usar
+    #svgs = os.getenv('FOLDER_SVGS')
+    #singulares = [int(f.split('.')[0]) for f in os.listdir(svgs)]
+    #json.dump(singulares, open('singulares.json', 'w'))
 
     genera_colecciones_palabras()
