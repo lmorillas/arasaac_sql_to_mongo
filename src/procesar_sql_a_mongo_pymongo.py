@@ -168,7 +168,7 @@ class Imagenes(object):
 
         # genera una colección de imagenes diferente por idioma
         
-        coleccion = 'araimage_{}'.format(self.lang)
+        coleccion = 'pictos_{}'.format(self.lang)
         colimages = self.mongo[coleccion]
         
         coleccion_pal = 'words_{}'.format(self.lang)
@@ -234,7 +234,7 @@ class Imagenes(object):
                     break
 
         sql_pal = '''select imagenes.id_imagen as idPictogram, 
-                {tablapal}.id_palabra as idKeyword, traduccion as keyword,
+                {tablapal}.id_traduccion as idKeyword, traduccion as keyword,
                 definicion_traduccion as meaning,
                 id_tipo_palabra as type
                 from {tablapal}, imagenes, palabra_imagen, palabras
@@ -351,12 +351,13 @@ def genera_colecciones_palabras():
 
 if __name__ == '__main__':
     logger = create_logger()
-
+    # esperamos si está dockerizado a que el mysql se levante
+    time.sleep(5)    
     load_dotenv('.env')
 
     # crear json con singulares (svgs) Descomentar para usar
-    #svgs = os.getenv('FOLDER_SVGS')
-    #singulares = [int(f.split('.')[0]) for f in os.listdir(svgs)]
-    #json.dump(singulares, open('singulares.json', 'w'))
+    svgs = os.getenv('FOLDER_SVGS')
+    singulares = [int(f.split('.')[0]) for f in os.listdir(svgs)]
+    json.dump(singulares, open('singulares.json', 'w'))
 
     genera_colecciones_palabras()
